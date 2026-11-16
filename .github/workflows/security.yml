@@ -27,11 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Run Semgrep
-        continue-on-error: true
+      - name: Run Semgrep (reporte completo)
         run: |
           pip install semgrep
           semgrep scan --config auto --sarif --output semgrep.sarif app/
+      - name: Semgrep gate (bloquea con severidad ERROR)
+        run: semgrep scan --config auto --severity ERROR --error app/
       - uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67 # v4 (codeql-bundle-v2.26.1)
         if: always()
         with:
