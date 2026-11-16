@@ -27,11 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Run Semgrep
-        continue-on-error: true
+      - name: Run Semgrep (reporte completo)
         run: |
           pip install semgrep
           semgrep scan --config auto --sarif --output semgrep.sarif app/
+      - name: Semgrep gate (bloquea con severidad ERROR)
+        run: semgrep scan --config auto --severity ERROR --error app/
       - uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67 # v4 (codeql-bundle-v2.26.1)
         if: always()
         with:
@@ -77,7 +78,36 @@ jobs:
           sarif_file: trivy-fs.sarif
           category: trivy-sca
 
-  # ---------------------------------------------------------------- IaC
+    # ---------------------------------------------------------------- SCA (Dependency-Check)
+  sca-depcheck:
+    name: SCA · OWASP Dependency-Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate package-lock.json
+        working-directory: app
+        run: npm install --package-lock-only
+      - name: Install Dependency-Check CLI
+        run: |
+          curl -sSLo dc.zip https://github.com/dependency-check/DependencyCheck/releases/download/v13.0.0/dependency-check-13.0.0-release.zip
+          unzip -q dc.zip
+      - name: Run Dependency-Check (bloquea con CVSS >= 7)
+        run: |
+          mkdir -p reports
+          ./dependency-check/bin/dependency-check.sh \
+            --project secure-sdlc-demo \
+            --scan app \
+            --format HTML --format JSON \
+            --out reports \
+            --failOnCVSS 7 \
+            --enableExperimental \
+            --nvdDatafeed https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: dependency-check-report
+          path: reports/
+   # ---------------------------------------------------------------- IaC
   iac:
     name: IaC · Checkov + Trivy
     runs-on: ubuntu-latest
