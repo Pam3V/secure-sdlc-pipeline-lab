@@ -95,6 +95,7 @@ jobs:
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
+          mkdir -p reports
           ./dependency-check/bin/dependency-check.sh \
             --project secure-sdlc-demo \
             --scan app \
